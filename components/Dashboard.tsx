@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { User, CallLog, CallOutcome, ExportData } from '../types';
 import { OUTCOME_OPTIONS, APP_NAME } from '../constants';
-import { Phone, TrendingUp, AlertTriangle, LogOut, CheckCircle2, LayoutDashboard, History, Send, Settings, ThumbsUp, X, ChevronDown, Check, ShieldAlert, Users, ShieldCheck, ArrowRight, BarChart3, Mail } from 'lucide-react';
+import { Phone, TrendingUp, AlertTriangle, LogOut, CheckCircle2, LayoutDashboard, History, Send, Settings, ThumbsUp, X, ChevronDown, Check, ShieldAlert, Users, ShieldCheck, ArrowRight, BarChart3, Mail, Trash2, UserPlus } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 interface DashboardProps {
@@ -12,16 +12,26 @@ interface DashboardProps {
   allCalls: CallLog[];  // All system calls
   onAddCall: (outcome: CallOutcome) => void;
   onUpdateUserRole?: (userId: string, newRole: 'admin' | 'agent') => void;
+  onRegisterUser?: (newUser: User) => void;
+  onDeleteUser?: (userId: string) => void;
 }
 
 type TabView = 'report' | 'analytics' | 'settings' | 'admin';
 
-const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, calls, allCalls, onAddCall, onUpdateUserRole }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, calls, allCalls, onAddCall, onUpdateUserRole, onRegisterUser, onDeleteUser }) => {
   const [activeTab, setActiveTab] = useState<TabView>(user.role === 'admin' ? 'admin' : 'report');
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null); // For Admin drill-down
   const [lastExport, setLastExport] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   
+  // Add User Form State
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPass, setNewUserPass] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'admin' | 'agent'>('agent');
+  const [addUserError, setAddUserError] = useState('');
+
   // Reporting State
   const [showRefusalOptions, setShowRefusalOptions] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -45,6 +55,33 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
     const newRole = targetUser.role === 'admin' ? 'agent' : 'admin';
     if (window.confirm(`האם אתה בטוח שברצונך לשנות את ההרשאה של ${targetUser.name} ל-${newRole === 'admin' ? 'מנהל' : 'נציג'}?`)) {
       onUpdateUserRole(targetUser.id, newRole);
+    }
+  };
+
+  const handleAddUserSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddUserError('');
+
+    if (usersList.some(u => u.email === newUserEmail)) {
+        setAddUserError('כתובת האימייל כבר קיימת במערכת');
+        return;
+    }
+
+    if (onRegisterUser) {
+        onRegisterUser({
+            id: Date.now().toString(),
+            name: newUserName,
+            email: newUserEmail,
+            password: newUserPass,
+            role: newUserRole
+        });
+        
+        // Reset and close
+        setIsAddUserModalOpen(false);
+        setNewUserName('');
+        setNewUserEmail('');
+        setNewUserPass('');
+        setNewUserRole('agent');
     }
   };
 
@@ -76,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
     let mostCommonRefusal = 'אין נתונים';
     let maxCount = 0;
     Object.entries(refusalCounts).forEach(([reason, count]) => {
-      const numCount = Number(count); // Explicitly cast to number
+      const numCount = Number(count);
       if (numCount > maxCount) {
         maxCount = numCount;
         mostCommonRefusal = reason;
@@ -125,7 +162,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
         if (reason === CallOutcome.NO_CREDIT) color = '#f97316';
         if (reason === CallOutcome.NO_MONEY) color = '#ef4444';
         if (reason === CallOutcome.HANGUP) color = '#6b7280';
-        data.push({ name: reason, value: Number(count), color }); // Explicitly cast to number
+        data.push({ name: reason, value: Number(count), color });
     });
     return data;
   }, [stats]);
@@ -385,7 +422,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto h-screen">
+      <main className="flex-1 overflow-y-auto h-screen relative">
         <div className="max-w-6xl mx-auto p-6 md:p-10">
           
           {/* Header */}
@@ -401,6 +438,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
                 {new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
             </div>
+            
+            {/* ADD USER BUTTON (Only visible in admin tab main view) */}
+            {activeTab === 'admin' && !selectedAgentId && user.role === 'admin' && (
+                <button 
+                    onClick={() => setIsAddUserModalOpen(true)}
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-medium shadow-lg shadow-purple-200 transition"
+                >
+                    <UserPlus size={18} />
+                    הוסף נציג
+                </button>
+            )}
           </header>
 
           {/* VIEW: ADMIN */}
@@ -478,17 +526,29 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
                                                 </button>
                                                 
                                                 {agent.id !== user.id && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleToggleRole(agent); }}
-                                                        className={`px-3 py-2 rounded-lg border text-sm transition ${
-                                                            agent.role === 'admin' 
-                                                            ? 'border-red-200 text-red-600 hover:bg-red-50' 
-                                                            : 'border-purple-200 text-purple-600 hover:bg-purple-50'
-                                                        }`}
-                                                        title={agent.role === 'admin' ? "הסר הרשאת מנהל" : "מנה למנהל"}
-                                                    >
-                                                        {agent.role === 'admin' ? <X size={16} /> : <ShieldCheck size={16} />}
-                                                    </button>
+                                                    <div className="flex gap-1">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleToggleRole(agent); }}
+                                                            className={`px-3 py-2 rounded-lg border text-sm transition ${
+                                                                agent.role === 'admin' 
+                                                                ? 'border-red-200 text-red-600 hover:bg-red-50' 
+                                                                : 'border-purple-200 text-purple-600 hover:bg-purple-50'
+                                                            }`}
+                                                            title={agent.role === 'admin' ? "הסר הרשאת מנהל" : "מנה למנהל"}
+                                                        >
+                                                            {agent.role === 'admin' ? <X size={16} /> : <ShieldCheck size={16} />}
+                                                        </button>
+                                                        
+                                                        {onDeleteUser && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); onDeleteUser(agent.id); }}
+                                                                className="px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"
+                                                                title="מחק משתמש"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -619,6 +679,88 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
           )}
 
         </div>
+        
+        {/* ADD USER MODAL */}
+        {isAddUserModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative animate-fade-in">
+                    <button 
+                        onClick={() => setIsAddUserModalOpen(false)}
+                        className="absolute top-4 left-4 text-gray-400 hover:text-gray-600"
+                    >
+                        <X size={24} />
+                    </button>
+                    <div className="text-center mb-6">
+                        <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <UserPlus size={24} />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800">הוספת נציג חדש</h3>
+                        <p className="text-sm text-gray-500">הזן את פרטי הנציג ליצירת חשבון</p>
+                    </div>
+
+                    <form onSubmit={handleAddUserSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">שם מלא</label>
+                            <input 
+                                type="text" 
+                                value={newUserName}
+                                onChange={(e) => setNewUserName(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">אימייל</label>
+                            <input 
+                                type="email" 
+                                value={newUserEmail}
+                                onChange={(e) => setNewUserEmail(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">סיסמה ראשונית</label>
+                            <input 
+                                type="text" 
+                                value={newUserPass}
+                                onChange={(e) => setNewUserPass(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                                required
+                            />
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">תפקיד</label>
+                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                <button 
+                                    type="button"
+                                    onClick={() => setNewUserRole('agent')}
+                                    className={`flex-1 py-1 text-sm font-medium rounded-md transition ${newUserRole === 'agent' ? 'bg-white shadow text-purple-700' : 'text-slate-500'}`}
+                                >
+                                    נציג
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setNewUserRole('admin')}
+                                    className={`flex-1 py-1 text-sm font-medium rounded-md transition ${newUserRole === 'admin' ? 'bg-white shadow text-purple-700' : 'text-slate-500'}`}
+                                >
+                                    מנהל
+                                </button>
+                            </div>
+                        </div>
+
+                        {addUserError && <p className="text-red-500 text-sm text-center">{addUserError}</p>}
+
+                        <button 
+                            type="submit" 
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg shadow-lg shadow-purple-200 transition"
+                        >
+                            צור משתמש
+                        </button>
+                    </form>
+                </div>
+            </div>
+        )}
       </main>
     </div>
   );

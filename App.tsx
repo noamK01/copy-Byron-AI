@@ -17,7 +17,9 @@ const App: React.FC = () => {
 
   const handleRegister = (newUser: User) => {
     setUsers((prevUsers) => [...prevUsers, newUser]);
-    setCurrentUser(newUser);
+    // If we are logged in as admin adding a user, we don't switch the current user
+    // If we were on the login screen (old logic), we would. 
+    // Since this is now only called from Dashboard by admin, we just update the list.
   };
 
   const handleResetPassword = (email: string, newPass: string) => {
@@ -34,6 +36,16 @@ const App: React.FC = () => {
     setUsers((prevUsers) => 
       prevUsers.map(u => u.id === userId ? { ...u, role: newRole } : u)
     );
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    if (currentUser?.id === userId) {
+        alert("לא ניתן למחוק את המשתמש של עצמך");
+        return;
+    }
+    if (window.confirm("האם אתה בטוח שברצונך למחוק משתמש זה? כל הנתונים שלו יישמרו במערכת אך הוא לא יוכל להתחבר.")) {
+        setUsers((prevUsers) => prevUsers.filter(u => u.id !== userId));
+    }
   };
 
   const handleAddCall = (outcome: CallOutcome) => {
@@ -60,7 +72,6 @@ const App: React.FC = () => {
         <Login 
           users={users} 
           onLogin={handleLogin} 
-          onRegister={handleRegister}
           onResetPassword={handleResetPassword}
         />
       ) : (
@@ -72,6 +83,8 @@ const App: React.FC = () => {
           allCalls={calls}  // Pass ALL calls for system-wide export calculations
           onAddCall={handleAddCall}
           onUpdateUserRole={handleUpdateUserRole}
+          onRegisterUser={handleRegister} // Pass registration function to dashboard
+          onDeleteUser={handleDeleteUser} // Pass delete function to dashboard
         />
       )}
     </div>
