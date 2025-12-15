@@ -12,3 +12,5 @@ export const OUTCOME_OPTIONS = [
   { value: CallOutcome.HANGUP, label: 'ניתוק מיידי', color: 'bg-gray-500' },
   { value: CallOutcome.CLOSED, label: 'נסגר (מכירה)', color: 'bg-purple-600' },
 ];
+
+export const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/25508800/uf7z2ow/";

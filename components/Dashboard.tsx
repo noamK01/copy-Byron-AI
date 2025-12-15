@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { User, CallLog, CallOutcome, ExportData } from '../types';
-import { OUTCOME_OPTIONS, APP_NAME } from '../constants';
+import { OUTCOME_OPTIONS, APP_NAME, ZAPIER_WEBHOOK_URL } from '../constants';
 import { Phone, TrendingUp, AlertTriangle, LogOut, CheckCircle2, LayoutDashboard, History, Send, Settings, ThumbsUp, X, ChevronDown, Check, ShieldAlert, Users, ShieldCheck, ArrowRight, BarChart3, Mail, Trash2, UserPlus } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
@@ -188,6 +188,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
       lowPerformanceAgents: lowPerformanceAgents
     };
 
+    // 1. Download JSON File
     const jsonString = JSON.stringify(exportData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -199,7 +200,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    setLastExport(`נשלח בהצלחה! (${new Date().toLocaleTimeString()})`);
+    // 2. Send to Zapier Webhook
+    try {
+        await fetch(ZAPIER_WEBHOOK_URL, {
+            method: 'POST',
+            body: JSON.stringify(exportData),
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8', // השימוש ב-text/plain מונע לעיתים חסימות CORS בדפדפנים מסוימים, Zapier יודע לקרוא את ה-JSON
+            },
+        });
+        setLastExport(`נשלח ל-Zapier בהצלחה! (${new Date().toLocaleTimeString()})`);
+    } catch (error) {
+        console.error("Failed to send to Zapier", error);
+        setLastExport(`שגיאה בשליחה ל-Zapier (הקובץ הורד)`);
+    }
+
     setIsSending(false);
   };
 
@@ -663,7 +678,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
                       ) : (
                         <>
                           <Send size={20} />
-                          שלח דוח ל-Make והורד JSON
+                          שלח דוח ל-Zapier והורד JSON
                         </>
                       )}
                     </button>
