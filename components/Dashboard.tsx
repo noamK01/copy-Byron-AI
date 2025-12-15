@@ -218,8 +218,50 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
     setIsSending(false);
   };
 
+  // Helper component for history table
+  const renderHistoryTable = () => (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-hidden">
+        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+           <History className="text-gray-500" size={20} />
+           היסטוריית שיחות
+        </h3>
+        {activeCallsData.length > 0 ? (
+          <div className="overflow-y-auto max-h-64">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">שעה</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">תוצאה</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {activeCallsData.slice().reverse().slice(0, 20).map((call) => (
+                  <tr key={call.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(call.timestamp).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        call.outcome === CallOutcome.CLOSED ? 'bg-purple-100 text-purple-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {call.outcome}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-10 text-gray-400">
+            אין נתונים לשיחות
+          </div>
+        )}
+    </div>
+  );
+
   // Reusable Analytics View (Used for both personal dashboard and admin drill-down)
-  const renderAnalyticsView = (title: string, showBackButton = false) => (
+  const renderAnalyticsView = (title: string, showBackButton = false, showHistory = false) => (
     <div className="space-y-6 animate-fade-in">
         {showBackButton && (
             <button 
@@ -274,7 +316,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
         </div>
 
         {/* Chart & History Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`grid grid-cols-1 ${showHistory ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-6`}>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-6">התפלגות שיחות</h3>
                 <div className="h-64 w-full">
@@ -308,44 +350,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-hidden">
-                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                   <History className="text-gray-500" size={20} />
-                   היסטוריית שיחות
-                </h3>
-                {activeCallsData.length > 0 ? (
-                  <div className="overflow-y-auto max-h-64">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">שעה</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">תוצאה</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {activeCallsData.slice().reverse().slice(0, 20).map((call) => (
-                          <tr key={call.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(call.timestamp).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm">
-                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                call.outcome === CallOutcome.CLOSED ? 'bg-purple-100 text-purple-800' : 'bg-red-100 text-red-800'
-                              }`}>
-                                {call.outcome}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-10 text-gray-400">
-                    אין נתונים לשיחות
-                  </div>
-                )}
-            </div>
+            {showHistory && renderHistoryTable()}
         </div>
     </div>
   );
@@ -472,7 +477,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
                 
                 {selectedAgentId ? (
                     // DRILL DOWN VIEW
-                    renderAnalyticsView('דוח נציג', true)
+                    renderAnalyticsView('דוח נציג', true, true)
                 ) : (
                     // MAIN ADMIN LIST (CARDS)
                     <>
@@ -652,11 +657,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
                   )}
                 </div>
               </div>
+              
+              {/* Call History moved here */}
+              {renderHistoryTable()}
             </div>
           )}
 
           {/* VIEW: ANALYTICS (Current User) */}
-          {activeTab === 'analytics' && renderAnalyticsView('דשבורד אישי')}
+          {activeTab === 'analytics' && renderAnalyticsView('דשבורד אישי', false, false)}
 
           {/* VIEW: SETTINGS */}
           {activeTab === 'settings' && (
