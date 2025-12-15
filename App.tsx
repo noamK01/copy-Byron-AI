@@ -21,18 +21,15 @@ const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     return () => window.removeEventListener('error', handleError);
   }, []);
 
-  // componentDidCatch equivalent for React components (if using class components)
-  // For functional components, we rely on the window.addEventListener approach for now.
-  // In a more robust solution, you might wrap a class component with a state for error.
-
   if (hasError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-red-50 text-red-800 border-2 border-red-400 rounded-lg m-4 shadow-lg text-center font-rubik">
         <h2 className="text-3xl font-bold mb-4">🚨 שגיאת ריצה (Vercel Runtime Error) 🚨</h2>
         <p className="text-lg mb-2">נראה שהקוד קרס לאחר הטעינה. סביר להניח שזו שגיאה שלא טופלה (כמו מפתח API חסר).</p>
         <p className="text-xl font-semibold mb-4">הודעת שגיאה: <strong className="break-all">{errorDetails}</strong></p>
-        <p className="text-md mb-2">אנא בדוק את <strong className="font-bold">משתני הסביבה (Environment Variables)</strong> (ודא ש-<code className="bg-red-100 p-1 rounded">API_KEY</code> מוגדר).</p>
-        <p className="text-md">כמו כן, בדוק את <strong className="font-bold">קונסולת הדפדפן</strong> (F12) לפרטים נוספים.</p>
+        <p className="text-md mb-2">אנא בדוק את <strong className="font-bold">משתני הסביבה (Environment Variables)</strong> ב-Vercel (ודא ש-<code className="bg-red-100 p-1 rounded">VITE_GEMINI_API_KEY</code> מוגדר).</p>
+        <p className="text-sm text-gray-700 mt-2">הערה: אם האפליקציה רצה ללא תהליך Build (למשל, ישירות מהדפדפן עם esm.sh), משתני import.meta.env לא יהיו זמינים.</p>
+        <p className="text-md mt-4">כמו כן, בדוק את <strong className="font-bold">קונסולת הדפדפן</strong> (F12) לפרטים נוספים.</p>
       </div>
     );
   }
@@ -49,13 +46,28 @@ const AppContent: React.FC = () => {
 
   // --- הוספת בדיקת API Key בזמן ריצה ---
   useEffect(() => {
-    // The API key is expected to be available in the execution environment
-    // as process.env.API_KEY.
-    const apiKey = process.env.API_KEY; 
+    // ✅ תיקון: גישה בטוחה (Safe Access) למשתני הסביבה למניעת קריסה
+    // השגיאה הקודמת קרתה כי import.meta.env היה undefined. 
+    // כעת אנו בודקים אם הוא קיים לפני הגישה למפתח.
+    
+    let apiKey = '';
+    
+    try {
+        if (import.meta && import.meta.env) {
+            apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        }
+    } catch (e) {
+        // התעלמות משגיאות גישה אם הסביבה לא תומכת ב-import.meta
+    }
+
+    // בדיקת fallback ל-process.env (למקרה שהסביבה תומכת בזה)
+    if (!apiKey && typeof process !== 'undefined' && process.env) {
+        apiKey = process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
+    }
+
     if (!apiKey) {
-      // אם המפתח חסר, זורקים שגיאה כדי שה-ErrorBoundary ילכוד אותה
-      // זו דוגמה לשגיאה קריטית שעלולה לקרות בפריסה.
-      throw new Error("מפתח API עבור Gemini חסר. הגדר את 'API_KEY' במשתני הסביבה.");
+      // אם המפתח חסר, זורקים שגיאה כדי שה-ErrorBoundary ילכוד אותה (במקום לקרוס)
+      throw new Error("מפתח API עבור Gemini חסר. לא נמצא ב-import.meta.env.VITE_GEMINI_API_KEY או process.env.API_KEY.");
     }
   }, []);
   // ------------------------------------
@@ -128,9 +140,9 @@ const AppContent: React.FC = () => {
           calls={userCalls} // Pass ONLY user's calls for display
           allCalls={calls}  // Pass ALL calls for system-wide export calculations
           onAddCall={handleAddCall}
-          onUpdateUserRole={handleUpdateUserRole}
-          onRegisterUser={handleRegister} // Pass registration function to dashboard
-          onDeleteUser={handleDeleteUser} // Pass delete function to dashboard
+          onUpdateUserRole={handleUpdateUserRole} 
+          onRegisterUser={handleRegister} 
+          onDeleteUser={handleDeleteUser} 
         />
       )}
     </div>
