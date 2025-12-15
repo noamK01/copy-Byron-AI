@@ -53,10 +53,8 @@ const AppContent: React.FC = () => {
     let apiKey = '';
     
     try {
-        // Cast import.meta to any to avoid TypeScript error "Property 'env' does not exist on type 'ImportMeta'"
-        const meta = import.meta as any;
-        if (meta && meta.env) {
-            apiKey = meta.env.VITE_GEMINI_API_KEY;
+        if (import.meta && import.meta.env) {
+            apiKey = import.meta.env.VITE_GEMINI_API_KEY;
         }
     } catch (e) {
         // התעלמות משגיאות גישה אם הסביבה לא תומכת ב-import.meta
