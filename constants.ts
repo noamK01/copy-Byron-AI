@@ -13,4 +13,4 @@ export const OUTCOME_OPTIONS = [
   { value: CallOutcome.CLOSED, label: 'נסגר (מכירה)', color: 'bg-purple-600' },
 ];
 
-export const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/25508800/uf7w8ei/";
+export const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/2795cvysas3uqjk47w3tlkvo28kdbv6m";

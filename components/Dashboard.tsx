@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { User, CallLog, CallOutcome, ExportData } from '../types';
-import { OUTCOME_OPTIONS, APP_NAME, ZAPIER_WEBHOOK_URL } from '../constants';
+import { OUTCOME_OPTIONS, APP_NAME, MAKE_WEBHOOK_URL } from '../constants';
 import { Phone, TrendingUp, AlertTriangle, LogOut, CheckCircle2, LayoutDashboard, History, Send, Settings, ThumbsUp, X, ChevronDown, Check, ShieldAlert, Users, ShieldCheck, ArrowRight, BarChart3, Mail, Trash2, UserPlus } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
@@ -200,19 +200,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // 2. Send to Zapier Webhook
+    // 2. Send to Make Webhook
     try {
-        await fetch(ZAPIER_WEBHOOK_URL, {
+        await fetch(MAKE_WEBHOOK_URL, {
             method: 'POST',
             body: JSON.stringify(exportData),
             headers: {
-                'Content-Type': 'text/plain;charset=utf-8', // השימוש ב-text/plain מונע לעיתים חסימות CORS בדפדפנים מסוימים, Zapier יודע לקרוא את ה-JSON
+                'Content-Type': 'application/json',
             },
         });
-        setLastExport(`נשלח ל-Zapier בהצלחה! (${new Date().toLocaleTimeString()})`);
+        setLastExport(`נשלח ל-Make בהצלחה! (${new Date().toLocaleTimeString()})`);
     } catch (error) {
-        console.error("Failed to send to Zapier", error);
-        setLastExport(`שגיאה בשליחה ל-Zapier (הקובץ הורד)`);
+        console.error("Failed to send to Make", error);
+        setLastExport(`שגיאה בשליחה ל-Make (הקובץ הורד)`);
     }
 
     setIsSending(false);
@@ -678,7 +678,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, usersList = [], onLogout, c
                       ) : (
                         <>
                           <Send size={20} />
-                          שלח דוח ל-Zapier והורד JSON
+                          שלח דוח ל-Make והורד JSON
                         </>
                       )}
                     </button>
